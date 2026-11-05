@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zuschnitt-Optimierer</title>
+<style>
+:root{--bg:#f6f3ee;--card:#fff;--tx:#2a2118;--mu:#7a6e60;--ac:#8a5a2b;--bd:#ddd3c4;--rest:#ece4d6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1814;--card:#262019;--tx:#f0e8dc;--mu:#a59a8a;--ac:#d4955a;--bd:#3d342a;--rest:#322a21}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding:12px}
+h1{font-size:1.3rem;margin:4px 0 12px}h2{font-size:1.05rem;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:12px}
+.g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+label{font-size:.8rem;color:var(--mu);display:block}
+label.ck{font-size:.9rem;color:var(--tx);margin-top:8px}
+input[type=number],select{width:100%;padding:8px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:1rem}
+.r{display:grid;grid-template-columns:28px 1fr 1fr 60px 36px;gap:6px;margin-bottom:6px;align-items:center}
+.r .n{font-size:.8rem;color:var(--mu);text-align:center}
+button{padding:10px 14px;border-radius:8px;border:1px solid var(--ac);background:var(--card);color:var(--ac);font-size:1rem;cursor:pointer}
+button.p{background:var(--ac);color:#fff}
+.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.sum b{display:block;font-size:1.3rem;color:var(--ac)}.sum span{font-size:.75rem;color:var(--mu)}
+.sc{overflow-x:auto}.sc svg{min-width:720px;width:100%;height:auto;display:block}
+.err{color:#c0392b}
+.tp{margin-top:6px;padding:10px;border:1px dashed var(--bd);border-radius:8px}.tp[hidden]{display:none}
+table{border-collapse:collapse;width:100%;font-size:.9rem;margin-top:8px}td,th{padding:4px 6px;border-bottom:1px solid var(--bd);text-align:left}td.n,th.n{text-align:right}
+.ph{display:none}.hint{font-size:.75rem;color:var(--mu);margin:6px 0 0}
+@media print{
+ @page{size:A4 landscape;margin:10mm}
+ :root:not([data-theme="light"]){--bg:#fff;--card:#fff;--tx:#000;--mu:#555;--ac:#6b4420;--bd:#bbb;--rest:#eee}
+ button,#in,.hint{display:none!important}.ph{display:block;margin-bottom:8px}
+ body{padding:0}.card{break-inside:avoid;border-color:#bbb}.sheet{break-before:page}.sc svg{min-width:0}
+}
+</style>
+
+<meta name="theme-color" content="#8a5a2b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+<h1>🪵 Zuschnitt-Optimierer</h1>
+<div class="card" id="in">
+<h2>Material</h2>
+<div class="g2">
+<div><label>Material</label><select id="MAT"></select></div>
+<div><label>Plattenformat (mm)</label><select id="FMT"></select></div>
+</div>
+<div class="g" style="margin-top:8px">
+<div><label>Plattenlänge (mm)</label><input type="number" id="L" value="5000"></div>
+<div><label>Plattenbreite (mm)</label><input type="number" id="B" value="2050"></div>
+<div><label>Schnittfuge (mm)</label><input type="number" id="K" value="4"></div>
+</div>
+<p class="hint">Gängige Handelsformate, Maße je nach Hersteller/Händler prüfen. „Eigene Maße“ für Sonderformate.</p>
+<label class="ck"><input type="checkbox" id="trim"> Besäumschnitt</label>
+<div class="tp" id="tp" hidden>
+<div class="g2"><div><label>Alle Seiten (mm)</label><input type="number" id="TA" value="10" min="0"></div><div></div>
+<div><label>Links (mm)</label><input type="number" id="TL" value="10" min="0"></div>
+<div><label>Rechts (mm)</label><input type="number" id="TR" value="10" min="0"></div>
+<div><label>Oben (mm)</label><input type="number" id="TT" value="10" min="0"></div>
+<div><label>Unten (mm)</label><input type="number" id="TB" value="10" min="0"></div></div>
+</div>
+<label class="ck"><input type="checkbox" id="rot"> Teile dürfen gedreht werden (Faserrichtung egal)</label>
+<div class="g2" style="margin-top:8px"><div><label>Beschriftung auf dem Plan</label><select id="LBL"><option value="pos">Positionsnummer</option><option value="dim">Plattenmaße</option></select></div></div>
+<h2 style="margin-top:14px">Preis</h2>
+<div class="g">
+<div><label>Preis je Platte (€ netto)</label><input type="number" id="PR" value="0" step="0.01"></div>
+<div><label>MwSt (%)</label><input type="number" id="MW" value="19"></div>
+</div>
+<h2 style="margin-top:14px">Benötigte Zuschnitte</h2>
+<div class="r"><span></span><label>Länge</label><label>Breite</label><label>Anzahl</label><span></span></div>
+<div id="rows"></div>
+<div class="bar"><button onclick="addRow()">+ Zeile</button><button onclick="demo()">Beispiel (40 Teile)</button><button class="p" onclick="calc()">Berechnen</button></div>
+</div>
+<div id="out"></div>
+<script>
+const $=id=>document.getElementById(id);
+const MATS={
+'Dreischichtplatte':[[5000,2050],[4100,2050],[3000,2050],[2500,1250]],
+'Multiplex (Birke)':[[2500,1250],[3000,1500],[3050,1525],[2440,1220]],
+'Sperrholz':[[2500,1250],[2440,1220],[3050,1525]],
+'OSB':[[2500,1250],[2800,1250],[2440,1220],[5000,2500]],
+'Spanplatte':[[2800,2070],[5200,2070],[2500,1250]],
+'MDF':[[2800,2070],[2440,1220],[2500,1250]],
+'Leimholzplatte':[[2500,1250],[3000,1250]],
+'Eigenes Material':[]};
+$('MAT').innerHTML=Object.keys(MATS).map(m=>`<option>${m}</option>`).join('');
+function fillFmt(){const f=MATS[$('MAT').value];$('FMT').innerHTML=f.map((x,i)=>`<option value="${i}">${x[0]} × ${x[1]}</option>`).join('')+'<option value="c">Eigene Maße</option>';
+ if(f.length)useFmt();else $('FMT').value='c'}
+function useFmt(){const v=$('FMT').value;if(v==='c')return;const f=MATS[$('MAT').value][+v];$('L').value=f[0];$('B').value=f[1]}
+$('MAT').onchange=fillFmt;$('FMT').onchange=useFmt;
+['L','B'].forEach(i=>$(i).oninput=()=>$('FMT').value='c');
+$('trim').onchange=()=>$('tp').hidden=!$('trim').checked;
+$('TA').oninput=()=>['TL','TR','TT','TB'].forEach(i=>$(i).value=$('TA').value);
+fillFmt();
+function num(){[...$('rows').children].forEach((r,i)=>r.querySelector('.n').textContent=i+1)}
+function addRow(l='',b='',n=1){const d=document.createElement('div');d.className='r';
+d.innerHTML=`<span class="n"></span><input type="number" inputmode="numeric" placeholder="mm" value="${l}"><input type="number" inputmode="numeric" placeholder="mm" value="${b}"><input type="number" inputmode="numeric" value="${n}" min="1"><button onclick="this.parentNode.remove();num()">×</button>`;$('rows').appendChild(d);num()}
+function demo(){$('rows').innerHTML='';[[1200,400,6],[800,300,8],[1500,600,4],[2000,250,5],[600,600,6],[950,420,4],[1100,180,3],[2400,500,2],[700,350,2]].forEach(r=>addRow(...r))}
+function pack(P,W,H,k,rot){
+ const S=[];
+ for(const p of P){
+  let best=null;
+  for(const s of S)for(let i=0;i<s.f.length;i++){const f=s.f[i];
+   for(const o of (rot?[0,1]:[0])){const w=o?p.h:p.w,h=o?p.w:p.h;
+    if(w+k<=f.w&&h+k<=f.h){const sc=Math.min(f.w-w-k,f.h-h-k)*1e4+Math.max(f.w-w-k,f.h-h-k);
+     if(!best||sc<best.sc)best={sc,s,i,w,h}}}}
+  if(!best){const s={f:[{x:0,y:0,w:W+k,h:H+k}],pl:[]};S.push(s);
+   for(const o of (rot?[0,1]:[0])){const w=o?p.h:p.w,h=o?p.w:p.h;
+    if(w<=W&&h<=H){best={s,i:0,w,h};break}}}
+  const {s,i,w,h}=best,f=s.f.splice(i,1)[0],pw=w+k,ph=h+k;
+  s.pl.push({x:f.x,y:f.y,w,h,id:p.id,ow:p.w,oh:p.h});
+  const rw=f.w-pw,rh=f.h-ph;
+  if(rw<=rh){if(rw>0)s.f.push({x:f.x+pw,y:f.y,w:rw,h:ph});if(rh>0)s.f.push({x:f.x,y:f.y+ph,w:f.w,h:rh})}
+  else{if(rw>0)s.f.push({x:f.x+pw,y:f.y,w:rw,h:f.h});if(rh>0)s.f.push({x:f.x,y:f.y+ph,w:pw,h:rh})}
+ }
+ return S}
+const eur=v=>v.toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+const hsl=(h,s,l)=>{s/=100;l/=100;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return l-a*Math.max(-1,Math.min(k-3,9-k,1))};return[f(0),f(8),f(4)]};
+const lab=(p,mode)=>{const d=`${p.ow}×${p.oh}`,i=`#${p.id}`;return mode==='pos'?[i]:[d]};
+let LAST=null;
+function calc(){
+ const W0=+$('L').value,H0=+$('B').value,k=Math.max(0,+$('K').value||0),rot=$('rot').checked,mode=$('LBL').value,out=$('out');
+ const tr=$('trim').checked,tv=i=>tr?Math.max(0,+$(i).value||0):0,tl=tv('TL'),trr=tv('TR'),tt=tv('TT'),tb=tv('TB');
+ const W=W0-tl-trr,H=H0-tt-tb;
+ let P=[],list=[];
+ [...$('rows').children].forEach((r,ri)=>{const v=[...r.querySelectorAll('input')].map(x=>+x.value);
+  if(v[0]>0&&v[1]>0){const n=v[2]||1;list.push({id:ri+1,l:v[0],b:v[1],n});for(let i=0;i<n;i++)P.push({w:v[0],h:v[1],id:ri+1})}});
+ if(!W0||!H0||!P.length||W<=0||H<=0){out.innerHTML='<div class="card err">Bitte Plattenmaß und mindestens einen Zuschnitt eingeben.</div>';return}
+ const bad=P.find(p=>!((p.w<=W&&p.h<=H)||(rot&&p.h<=W&&p.w<=H)));
+ if(bad){out.innerHTML=`<div class="card err">Teil ${bad.w}×${bad.h} passt nicht auf die Platte${tr?' (nach Besäumung '+W+'×'+H+')':''}.</div>`;return}
+ const ord=[p=>p.w*p.h,p=>p.h,p=>p.w,p=>p.w+p.h,p=>Math.max(p.w,p.h)];
+ let bs=null;
+ for(const f of ord){const S=pack([...P].sort((a,b)=>f(b)-f(a)),W,H,k,rot);
+  const last=S[S.length-1],used=last.pl.reduce((a,p)=>a+p.w*p.h,0);
+  if(!bs||S.length<bs.S.length||(S.length==bs.S.length&&used<bs.u))bs={S,u:used}}
+ const S=bs.S,area=P.reduce((a,p)=>a+p.w*p.h,0),tot=S.length*W0*H0,waste=(1-area/tot)*100;
+ const lastUsed=S[S.length-1].pl.reduce((a,p)=>a+p.w*p.h,0),rest=(1-lastUsed/(W0*H0))*100;
+ const pr=+$('PR').value||0,mw=+$('MW').value||0,net=pr*S.length,vat=net*mw/100;
+ const mat=$('MAT').value,head=`${mat} ${W0}x${H0} mm, Fuge ${k} mm${tr?`, Besaeumung L${tl}/R${trr}/O${tt}/U${tb} mm`:''}${rot?', Drehen erlaubt':''}`;
+ LAST={S,W0,H0,tl,tt,W,H,list,mode,head,mat,n:P.length,waste,rest,pr,mw,net,vat,area,tr};
+ let h=`<div class="ph"><h2>Zuschnittplan · ${new Date().toLocaleDateString('de-DE')}</h2>${head.replace(/x(\d)/,' × $1').replace('Besaeumung','Besäumung')}</div>
+ <div class="card"><div class="sum"><div><b>${S.length}</b><span>Platten</span></div><div><b>${waste.toFixed(1)} %</b><span>Verschnitt gesamt</span></div><div><b>${P.length}</b><span>Teile</span></div></div>
+ <p class="hint" style="font-size:.85rem">Letzte Platte ist zu ${rest.toFixed(0)} % frei (Restplatte). Alle Schnitte sind durchgehend (Plattensäge).</p>`;
+ if(pr>0)h+=`<table><tr><td>${S.length} Platten × ${eur(pr)}</td><td class="n">${eur(net)}</td></tr><tr><td>MwSt ${mw} %</td><td class="n">${eur(vat)}</td></tr><tr><td><b>Gesamt brutto</b></td><td class="n"><b>${eur(net+vat)}</b></td></tr><tr><td>Materialkosten je m² verbaut (netto)</td><td class="n">${eur(net/(area/1e6))}</td></tr></table>`;
+ h+=`<table><tr><th>Pos</th><th>Länge × Breite</th><th class="n">Anzahl</th></tr>${list.map(x=>`<tr><td>${x.id}</td><td>${x.l} × ${x.b} mm</td><td class="n">${x.n}</td></tr>`).join('')}</table>
+ <div class="bar"><button class="p" onclick="outPdf('save')">PDF speichern</button><button onclick="window.print()">Drucken</button><button onclick="outPdf('share')">Teilen</button></div></div>`;
+ S.forEach((s,n)=>{
+  const u=s.pl.reduce((a,p)=>a+p.w*p.h,0);
+  let g=`<rect width="${W0}" height="${H0}" fill="var(--rest)" stroke="var(--bd)" stroke-width="6"/>`;
+  if(tr)g+=`<rect x="${tl}" y="${tt}" width="${W}" height="${H}" fill="none" stroke="var(--mu)" stroke-width="3" stroke-dasharray="20 14"/>`;
+  s.pl.forEach(p=>{const c=(p.ow*7+p.oh*13)%360,x=p.x+tl,y=p.y+tt;
+   g+=`<rect x="${x}" y="${y}" width="${p.w}" height="${p.h}" fill="hsl(${c} 45% 55%)" fill-opacity=".55" stroke="var(--ac)" stroke-width="5"/>`;
+   const tx=lab(p,mode)[0],al=Math.max(p.w,p.h),cr=Math.min(p.w,p.h);
+   if(cr>90&&al>tx.length*40)g+=`<text transform="translate(${x+p.w/2} ${y+p.h/2})${p.h>p.w?' rotate(-90)':''}" y="26" text-anchor="middle" font-size="75" fill="var(--tx)">${tx}</text>`});
+  h+=`<div class="card sheet"><h2>Platte ${n+1} von ${S.length} <span style="font-weight:400;color:var(--mu)">· ${s.pl.length} Teile · ${(u/(W0*H0)*100).toFixed(0)} % genutzt</span></h2><div class="sc"><svg viewBox="0 0 ${W0} ${H0}">${g}</svg></div></div>`});
+ out.innerHTML=h;out.scrollIntoView({behavior:'smooth'})}
+/* ---- PDF (ohne Bibliothek, offline) ---- */
+const esc=s=>String(s).replace(/[\\()]/g,'\\$&').replace(/€/g,'\\200').replace(/[^\x00-\x7e]/g,c=>c.charCodeAt(0)<256?'\\'+c.charCodeAt(0).toString(8).padStart(3,'0'):'?');
+function buildPDF(){
+ const L=LAST,PW=842,PH=595,pages=[];
+ const T=(x,y,sz,s,b,m)=>`BT /F${b?2:1} ${sz} Tf ${m||`1 0 0 1 ${x.toFixed(1)} ${y.toFixed(1)}`} ${m?'':''}${m?'':'Tm'} (${esc(s)}) Tj ET\n`;
+ const tm=(m,x,y)=>m+` ${x.toFixed(1)} ${y.toFixed(1)} Tm`;
+ let c=T(30,PH-40,16,'Zuschnittplan - '+new Date().toLocaleDateString('de-DE'),1);
+ c+=T(30,PH-60,10,L.head);
+ c+=T(30,PH-82,12,`${L.S.length} Platten  |  Verschnitt ${L.waste.toFixed(1)} %  |  ${L.n} Teile  |  Restplatte ${L.rest.toFixed(0)} % frei`,1);
+ let y=PH-106;
+ if(L.pr>0){[[`${L.S.length} Platten x ${eur(L.pr)}`,eur(L.net)],[`MwSt ${L.mw} %`,eur(L.vat)],['Gesamt brutto',eur(L.net+L.vat)]].forEach((r,i)=>{c+=T(30,y,11,r[0],i==2)+T(250,y,11,r[1],i==2);y-=16});y-=8}
+ c+=T(30,y,11,'Pos',1)+T(80,y,11,'Laenge x Breite (mm)',1)+T(250,y,11,'Anzahl',1);y-=15;
+ let cx=0;
+ for(const r of L.list){if(y<40){cx+=400;y=PH-106}
+  c+=T(30+cx,y,10,String(r.id))+T(80+cx,y,10,`${r.l} x ${r.b}`)+T(250+cx,y,10,String(r.n));y-=13}
+ pages.push(c);
+ L.S.forEach((s,n)=>{
+  const sc=Math.min((PW-40)/L.W0,(PH-80)/L.H0),x0=20,yt=PH-50;
+  const Y=(y,h)=>yt-(y+h)*sc;
+  let c=T(20,PH-30,12,`Platte ${n+1} von ${L.S.length} - ${s.pl.length} Teile - ${(s.pl.reduce((a,p)=>a+p.w*p.h,0)/(L.W0*L.H0)*100).toFixed(0)} % genutzt`,1);
+  c+=`0.93 0.9 0.85 rg 0.5 0.45 0.4 RG 1 w ${x0} ${Y(0,L.H0).toFixed(1)} ${(L.W0*sc).toFixed(1)} ${(L.H0*sc).toFixed(1)} re B\n`;
+  if(L.tr)c+=`q [4 3] 0 d 0.4 G 0.5 w ${(x0+L.tl*sc).toFixed(1)} ${Y(L.tt,L.H).toFixed(1)} ${(L.W*sc).toFixed(1)} ${(L.H*sc).toFixed(1)} re S Q\n`;
+  s.pl.forEach(p=>{const x=p.x+L.tl,yy=p.y+L.tt,col=hsl((p.ow*7+p.oh*13)%360,45,75);
+   c+=`${col.map(v=>v.toFixed(3)).join(' ')} rg 0.42 0.27 0.12 RG 0.7 w ${(x0+x*sc).toFixed(1)} ${Y(yy,p.h).toFixed(1)} ${(p.w*sc).toFixed(1)} ${(p.h*sc).toFixed(1)} re B\n`;
+   const tx=lab(p,L.mode)[0],al=Math.max(p.w,p.h),cr=Math.min(p.w,p.h);
+   if(cr>90&&al>tx.length*40){const fs=75*sc,w=tx.length*0.52*fs,cxp=x0+(x+p.w/2)*sc,cyp=Y(yy,p.h)+p.h*sc/2;
+    c+='0 g '+(p.h>p.w?T(0,0,fs,tx,0,tm('0 1 -1 0',cxp+fs*.35,cyp-w/2)):T(cxp-w/2,cyp-fs*.35,fs,tx))}});
+  pages.push(c)});
+ const o=[];let id=5;const kids=pages.map((_,i)=>6+2*i);
+ o[1]='<< /Type /Catalog /Pages 2 0 R >>';
+ o[2]=`<< /Type /Pages /Kids [${kids.map(k=>k+' 0 R').join(' ')}] /Count ${pages.length} >>`;
+ o[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+ o[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+ pages.forEach((c,i)=>{o[5+2*i]=`<< /Length ${c.length} >>\nstream\n${c}endstream`;
+  o[6+2*i]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PW} ${PH}] /Contents ${5+2*i} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>`});
+ let s='%PDF-1.4\n',off=[];
+ for(let i=1;i<o.length;i++){off[i]=s.length;s+=`${i} 0 obj\n${o[i]}\nendobj\n`}
+ const xr=s.length;s+=`xref\n0 ${o.length}\n0000000000 65535 f \n`+off.slice(1).map(v=>String(v).padStart(10,'0')+' 00000 n \n').join('')+`trailer\n<< /Size ${o.length} /Root 1 0 R >>\nstartxref\n${xr}\n%%EOF`;
+ return new Blob([Uint8Array.from(s,ch=>ch.charCodeAt(0)&255)],{type:'application/pdf'})}
+async function outPdf(mode){
+ if(!LAST)return;let blob;try{blob=buildPDF()}catch(e){alert('PDF konnte nicht erstellt werden.');return}
+ const name='Zuschnittplan_'+new Date().toISOString().slice(0,10)+'.pdf';
+ if(mode==='share'){
+  const f=new File([blob],name,{type:'application/pdf'});
+  try{if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Zuschnittplan'});return}
+   if(navigator.share){await navigator.share({title:'Zuschnittplan',text:`${LAST.S.length} Platten, Verschnitt ${LAST.waste.toFixed(1)} %`});return}}catch(e){if(e.name==='AbortError')return}
+  alert('Teilen wird hier nicht unterstützt. Die PDF wird stattdessen gespeichert.')}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000)}
+demo();
+</script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(console.error);
+  });
+}
+</script>
+</body>
+</html>
